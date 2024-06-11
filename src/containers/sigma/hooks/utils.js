@@ -3,13 +3,12 @@ import { Decimal } from '@cosmjs/math';
 import BigNumber from 'bignumber.js';
 import { useQuery } from '@tanstack/react-query';
 import { getDelegatorDelegations } from 'src/utils/search/utils';
-import { CYBER } from '../../../utils/config';
+import { BECH32_PREFIX_VALOPER, BASE_DENOM } from 'src/constants/config';
 import { fromBech32 } from '../../../utils/utils';
-
-const { DENOM_CYBER } = CYBER;
+import { useStake as useVerseStake } from 'src/features/cybernet/ui/hooks/useCurrentAccountStake';
 
 const initValue = {
-  denom: DENOM_CYBER,
+  denom: BASE_DENOM,
   amount: '0',
 };
 
@@ -19,6 +18,7 @@ export const initValueMainToken = {
   melting: { ...initValue },
   growth: { ...initValue },
   total: { ...initValue },
+  cyberver: { ...initValue },
 };
 
 const initValueResponseFunc = (denom = '', amount = 0) => {
@@ -32,7 +32,7 @@ const getDelegationsAmount = (data) => {
       delegationsAmount = delegationsAmount.plus(itemDelegation.balance.amount);
     });
   }
-  return initValueResponseFunc(DENOM_CYBER, delegationsAmount.toString());
+  return initValueResponseFunc(BASE_DENOM, delegationsAmount.toString());
 };
 
 const getUnbondingAmount = (data) => {
@@ -45,7 +45,7 @@ const getUnbondingAmount = (data) => {
       });
     });
   }
-  return initValueResponseFunc(DENOM_CYBER, unbondingAmount.toString());
+  return initValueResponseFunc(BASE_DENOM, unbondingAmount.toString());
 };
 
 const getRewardsAmount = (data) => {
@@ -57,7 +57,7 @@ const getRewardsAmount = (data) => {
       Decimal.fromAtomics(amount, 18).floor().toString()
     );
   }
-  return initValueResponseFunc(DENOM_CYBER, rewardsAmount.toString());
+  return initValueResponseFunc(BASE_DENOM, rewardsAmount.toString());
 };
 
 const getCommissionAmount = (data) => {
@@ -70,10 +70,27 @@ const getCommissionAmount = (data) => {
       Decimal.fromAtomics(amount, 18).floor().toString()
     );
   }
-  return initValueResponseFunc(DENOM_CYBER, commissionAmount.toString());
+  return initValueResponseFunc(BASE_DENOM, commissionAmount.toString());
 };
 
 export const useGetBalance = (client, addressBech32) => {
+  // seems combine to 1 hook
+  const s1 = useVerseStake({
+    address: addressBech32,
+    contractAddress:
+      'pussy1j9qku20ssfjdzgl3y5hl0vfxzsjwzwn7d7us2t2n4ejgc6pesqcqhnxsz0',
+  });
+
+  const s2 = useVerseStake({
+    address: addressBech32,
+    contractAddress:
+      'pussy1guj27rm0uj2mhwnnsr8j7cz6uvsz2d759kpalgqs60jahfzwgjcs4l28cw',
+  });
+
+  const total1 = s1.data?.reduce((acc, { stake }) => acc + stake, 0) || 0;
+  const total2 = s2.data?.reduce((acc, { stake }) => acc + stake, 0) || 0;
+  const totalCyberver = total1 + total2;
+
   try {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { data, isFetching } = useQuery(
@@ -81,7 +98,7 @@ export const useGetBalance = (client, addressBech32) => {
       async () => {
         const responsegetBalance = await client.getBalance(
           addressBech32,
-          DENOM_CYBER
+          BASE_DENOM
         );
 
         const responsedelegatorDelegations = await getDelegatorDelegations(
@@ -107,7 +124,7 @@ export const useGetBalance = (client, addressBech32) => {
 
         const dataValidatorAddress = fromBech32(
           addressBech32,
-          CYBER.BECH32_PREFIX_ACC_ADDR_CYBERVALOPER
+          BECH32_PREFIX_VALOPER
         );
 
         const responsevalidatorCommission = await client.validatorCommission(
@@ -123,6 +140,10 @@ export const useGetBalance = (client, addressBech32) => {
           frozen: delegationsAmount,
           melting: unbondingAmount,
           growth: rewardsAmount,
+          cyberver: {
+            denom: BASE_DENOM,
+            amount: totalCyberver,
+          },
         };
 
         if (commissionAmount.amount > 0) {
@@ -136,7 +157,7 @@ export const useGetBalance = (client, addressBech32) => {
         return {
           ...resultBalance,
           total: {
-            denom: DENOM_CYBER,
+            denom: BASE_DENOM,
             amount: total,
           },
         };

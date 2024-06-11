@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, matchPath, useLocation } from 'react-router-dom';
 
 import { AppDispatch } from 'src/redux/store';
 import { initPocket, selectCurrentAddress } from 'src/redux/features/pocket';
@@ -21,6 +21,8 @@ import useSenseManager from 'src/features/sense/ui/useSenseManager';
 
 // eslint-disable-next-line unused-imports/no-unused-imports, @typescript-eslint/no-unused-vars
 import { initCyblog } from 'src/utils/logging/bootstrap';
+import { PreviousPageProvider } from 'src/contexts/previousPage';
+import { cybernetRoutes } from 'src/features/cybernet/ui/routes';
 
 export const PORTAL_ID = 'portal';
 
@@ -67,6 +69,11 @@ function App() {
   // }, [communityLoaded, community, dispatch]);
 
   useEffect(() => {
+    // tabs
+    if (matchPath(routes.senateProposal.path, location.pathname)) {
+      return;
+    }
+
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
@@ -96,20 +103,25 @@ function App() {
   // };
 
   return (
-    <MainLayout>
-      <>
-        {/* not move portal order */}
-        {(location.pathname.includes('/brain') ||
-          location.pathname.includes('/oracle2') ||
-          location.pathname.includes('/graph')) && (
-          <div id={PORTAL_ID} className={styles.portal} />
-        )}
+    <PreviousPageProvider>
+      <MainLayout>
+        <>
+          {/* not move portal order */}
+          {(location.pathname.includes('/brain') ||
+            location.pathname.includes('/oracle2') ||
+            location.pathname.includes('/graph')) && (
+            <div id={PORTAL_ID} className={styles.portal} />
+          )}
 
-        {!(location.pathname === '/') && <AdviserContainer />}
+          {!(
+            ['/'].includes(location.pathname) ||
+            matchPath(cybernetRoutes.verse.path, location.pathname)
+          ) && <AdviserContainer />}
 
-        <Outlet />
-      </>
-    </MainLayout>
+          <Outlet />
+        </>
+      </MainLayout>
+    </PreviousPageProvider>
   );
 }
 
